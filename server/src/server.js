@@ -5,7 +5,7 @@ dotenv.config()
 import http from "http"
 import { Server } from "socket.io";
 import cors from "cors"
-import { INIT_CALL, INIT_CREATE_OFFER, RECEIVE_OFFER, SEND_ANSWER, SEND_OFFER, RECEIVE_ANSWER, SEND_ICE_CANDIDATE, RECIEVE_ICE_CANDIDATE, CALL_ENDED, CALL_ENDED_BY_ANOTHER_USER } from "./constants/constants.js";
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -20,6 +20,19 @@ app.use(express.json())
 app.use(cors({
   origin:"* "
 }))
+
+
+import { INIT_CALL,
+     INIT_CREATE_OFFER,
+      RECEIVE_OFFER, 
+      SEND_ANSWER
+      , SEND_OFFER,
+       RECEIVE_ANSWER,
+        SEND_ICE_CANDIDATE,
+         RECIEVE_ICE_CANDIDATE,
+          CALL_ENDED,
+           CALL_ENDED_BY_ANOTHER_USER 
+        } from "./constants/constants.js";
 io.on("connection", (socket)=>{
   console.log(`User is connected successfully ${socket.id} `)
 
@@ -73,7 +86,10 @@ io.on("connection", (socket)=>{
 
 )
 
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
+
+export {io}

@@ -34,11 +34,10 @@ function Call() {
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
         localVideoRef.current.onloadedmetadata = () => {
-          localVideoRef.current?.play().catch(e => console.error('Local video playback failed:', e));
+          localVideoRef.current.play().catch(e => console.error('Local video playback failed:', e));
         };
       }
 
-      // Add tracks to peer instance
       stream.getTracks().forEach(track => {
         peerInstance.addTrack(track, stream);
       });
@@ -79,23 +78,25 @@ function Call() {
     };
 
     peerInstance.ontrack = (event) => {
+      console.log("🔔 ontrack event fired", event);
       const [stream] = event.streams;
       if (stream) {
+        console.log("✅ Remote stream received");
         setRemoteStream(stream);
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = stream;
           remoteVideoRef.current.onloadedmetadata = () => {
-            remoteVideoRef.current?.play().catch(e => console.error('Remote video playback failed:', e));
+            remoteVideoRef.current.play().catch(e => console.error('Remote video playback failed:', e));
           };
         }
+      } else {
+        console.warn("❌ No remote stream found");
       }
     };
   };
 
   const endCall = () => {
-    SocketInstance.emitEvent(CALL_ENDED, {
-      id 
-    })
+    SocketInstance.emitEvent(CALL_ENDED, { id });
     manuallyEnded.current = true;
     cleanup();
     navigate('/');
@@ -129,10 +130,12 @@ function Call() {
     socket.on(INIT_CREATE_OFFER, CreateCall);
 
     socket.on(RECEIVE_OFFER, async ({ offer }) => {
+      console.log("📨 Received offer");
       await onOfferReceive(offer);
     });
 
     socket.on(RECEIVE_ANSWER, async ({ answer }) => {
+      console.log("📨 Received answer");
       try {
         await peerInstance.setRemoteDescription(new RTCSessionDescription(answer));
       } catch (err) {
@@ -148,10 +151,10 @@ function Call() {
       }
     });
 
-    socket.on(CALL_ENDED_BY_ANOTHER_USER, ()=>{
-        alert(`the call ended by another user`)
-        navigate("/")
-    })
+    socket.on(CALL_ENDED_BY_ANOTHER_USER, () => {
+      alert("The call was ended by the other user.");
+      navigate("/");
+    });
 
     return () => {
       socket.off(INIT_CREATE_OFFER);
@@ -162,18 +165,77 @@ function Call() {
   }, [socket]);
 
   return (
-    <div style={{ textAlign: 'center', padding: '20px' }}>
-      <h2>In Call</h2>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
-        <video ref={localVideoRef} autoPlay muted playsInline style={{ width: '300px', backgroundColor: 'black', borderRadius: '10px' }} />
-        <video ref={remoteVideoRef} autoPlay playsInline style={{ width: '300px', backgroundColor: 'black', borderRadius: '10px' }} />
+    <div style={{ width: '100vw', height: '100vh', position: 'relative', backgroundColor: 'black' }}>
+      <video
+        ref={remoteVideoRef}
+        autoPlay
+        playsInline
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          backgroundColor: 'black'
+        }}
+      />
+      <video
+        ref={localVideoRef}
+        autoPlay
+        muted
+        playsInline
+        style={{
+          position: 'absolute',
+          width: '25%',
+          bottom: '20px',
+          right: '20px',
+          borderRadius: '10px',
+          border: '2px solid white',
+          backgroundColor: 'black'
+        }}
+      />
+      <div style={{
+        position: 'absolute',
+        bottom: '20px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        display: 'flex',
+        gap: '15px',
+        zIndex: 2,
+      }}>
+        <button style={buttonStyle}>Audio</button>
+        <button style={buttonStyle}>Video</button>
+        <button style={buttonStyle}>Share Screen</button>
+        <button style={{ ...buttonStyle, backgroundColor: '#e74c3c' }} onClick={endCall}>End Call</button>
       </div>
-      <br />
-      <button onClick={endCall} style={{ padding: '10px 20px', backgroundColor: '#e74c3c', color: 'white', borderRadius: '5px' }}>
-        End Call
-      </button>
+      {/* Debug */}
+      {remoteStream ? (
+        <p style={debugText}>✅ Remote stream active</p>
+      ) : (
+        <p style={{ ...debugText, color: 'red' }}>❌ Remote stream missing</p>
+      )}
     </div>
   );
 }
+
+const buttonStyle = {
+  padding: '10px 16px',
+  backgroundColor: '#2c3e50',
+  color: 'white',
+  border: 'none',
+  borderRadius: '8px',
+  fontSize: '14px',
+  cursor: 'pointer',
+};
+
+const debugText = {
+  position: 'absolute',
+  top: '10px',
+  left: '10px',
+  color: 'lime',
+  background: 'rgba(0,0,0,0.6)',
+  padding: '4px 8px',
+  borderRadius: '5px',
+  fontSize: '13px',
+  zIndex: 3
+};
 
 export default Call;
