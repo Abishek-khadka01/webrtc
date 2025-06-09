@@ -14,6 +14,7 @@ import {
   CALL_ENDED_BY_ANOTHER_USER
 } from '../constants';
 import PeerService from "../functions/peer";
+import useUserStore from '../context/user.context';
 
 function Call() {
   const navigate = useNavigate();
@@ -23,8 +24,9 @@ function Call() {
   const [remoteStream, setRemoteStream] = useState(null);
   const { id } = useParams();
   const manuallyEnded = useRef(false);
-  const socket = SocketInstance.getInstance();
+  const socket = SocketInstance.getInstance(useUserStore.getState().sub);
   const peerInstance = PeerService.getPeer();
+  console.log(useUserStore.getState().sub)
 
   const GetUserMedia = async () => {
     try {
@@ -99,7 +101,7 @@ function Call() {
     SocketInstance.emitEvent(CALL_ENDED, { id });
     manuallyEnded.current = true;
     cleanup();
-    navigate('/');
+    navigate('/dashboard');
   };
 
   const cleanup = () => {
@@ -111,7 +113,7 @@ function Call() {
   };
 
   useEffect(() => {
-    SocketInstance.connectSocket();
+    SocketInstance.connectSocket(useUserStore.getState().sub);
     GetUserMedia().then(() => {
       setupPeerListeners();
       socket.emit(INIT_CALL, { id });
@@ -128,6 +130,12 @@ function Call() {
 
   useEffect(() => {
     socket.on(INIT_CREATE_OFFER, CreateCall);
+
+    socket.on("connect_error", (error)=>{
+      alert(`Login again ${error}`)
+      navigate("/login")
+      
+    })
 
     socket.on(RECEIVE_OFFER, async ({ offer }) => {
       console.log("📨 Received offer");
@@ -153,7 +161,7 @@ function Call() {
 
     socket.on(CALL_ENDED_BY_ANOTHER_USER, () => {
       alert("The call was ended by the other user.");
-      navigate("/");
+      navigate("/dashboard");
     });
 
     return () => {

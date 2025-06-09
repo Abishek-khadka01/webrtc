@@ -1,18 +1,22 @@
 import { io } from "socket.io-client";
-
 class SocketInstance {
   static socketInstance = null;
 
-  static connectSocket() {
+  static connectSocket(sub) {
     if (!this.socketInstance) {
-      this.socketInstance = io("http://localhost:4000");
+      console.log(`the sub details is ${sub}`)
+      this.socketInstance = io("http://localhost:4000", {
+        auth:{
+          sub
+        }
+      });
       console.log("Socket connected:", SocketInstance.socketInstance);
     }
   }
 
-  static getInstance() {
+  static getInstance(sub) {
     if (!SocketInstance.socketInstance) {
-      SocketInstance.connectSocket();
+      SocketInstance.connectSocket(sub);
     }
     return SocketInstance.socketInstance;
   }

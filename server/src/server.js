@@ -2,11 +2,14 @@
 import express from "express"
 import dotenv from "dotenv"
 dotenv.config()
+import {createClient} from "redis"
 import http from "http"
 import { Server } from "socket.io";
 import cors from "cors"
-
+import { CallBack, GetUrl, UserLogOut } from "./user.controller.js";
+import {oauthClient} from "./user.controller.js"
 const app = express();
+import cookieParser from "cookie-parser"
 const server = http.createServer(app);
 const io = new Server(server, {
   cors:{
@@ -18,10 +21,50 @@ const io = new Server(server, {
 
 app.use(express.json())
 app.use(cors({
-  origin:"* "
-}))
+  origin: "http://localhost:5173",
+  methods: ["GET", "POST"],
+  credentials : true
+}));
+
+app.use(cookieParser())
+export const redis = createClient({
+  url: 'redis://localhost:6379',
+});
 
 
+redis.on('error', (err) => {
+  console.error('Redis connection error:', err);
+});
+
+
+redis.on('connect', () => {
+  console.log('Redis connected successfully');
+});
+
+(async () => {
+  try {
+    await redis.connect();
+  } catch (err) {
+    console.error('Failed to connect to Redis:', err);
+  }
+})();
+
+
+
+
+
+oauthClient.on("tokens", (token)=>{
+  // do the operations in the oauthclient to save the details 
+  if(token.access_token){
+    console.log(token.access_token)
+  }
+})
+
+
+
+app.get("/", GetUrl)
+app.get("/google/callback", CallBack)
+app.post("/", AuthMiddleware,  UserLogOut);
 import { INIT_CALL,
      INIT_CREATE_OFFER,
       RECEIVE_OFFER, 
@@ -33,6 +76,27 @@ import { INIT_CALL,
           CALL_ENDED,
            CALL_ENDED_BY_ANOTHER_USER 
         } from "./constants/constants.js";
+import { AuthMiddleware } from "./user.middleware.js"
+
+
+        io.use(async (socket, next) => {
+          console.log(`IO Middleware is running`);
+          const { sub } = socket.handshake.auth;
+        
+          console.log(`the sub details is ${sub}`);
+          const findDetails = await redis.hGet("users", sub);
+          console.log(findDetails);
+        
+          if (!findDetails) {
+            return next(new Error(`Error in finding if the user is logged in`));
+          }
+        
+          next();
+        });
+        
+
+
+
 io.on("connection", (socket)=>{
   console.log(`User is connected successfully ${socket.id} `)
 
@@ -53,6 +117,7 @@ io.on("connection", (socket)=>{
         from : socket.id 
       })
   })
+
 
   socket.on(SEND_OFFER, (message)=>{
     
